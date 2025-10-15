@@ -20,6 +20,7 @@ Job State Management: Tracking the lifecycle of a job.
 
 The system is designed as a set of distributed, decoupled microservices to ensure scalability and resilience. The core principle is to separate the job submission logic from the scheduling and execution logic.
 
+```mermaid
 graph TD
     subgraph "User / Client"
         Client[Client Application]
@@ -51,6 +52,7 @@ graph TD
     Worker -- "7. Updates status (RUNNING)" --> DB
     Worker -- "8. Executes Task" --> Webhook
     Worker -- "9. Updates status (COMPLETED/FAILED)" --> DB
+```
 
 
 Data Flow Summary:
