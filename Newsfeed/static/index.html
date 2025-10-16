@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Personal News Hub</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f4f7;
+        }
+        header {
+            background: #1d3557;
+            color: white;
+            padding: 16px 24px;
+        }
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        section {
+            margin-bottom: 24px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 16px 20px;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        .controls label {
+            margin-right: 12px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .controls input, .controls select {
+            margin-left: 6px;
+        }
+        .feed-item {
+            border-bottom: 1px solid #e5e5ec;
+            padding: 16px 0;
+        }
+        .feed-item:last-child {
+            border-bottom: none;
+        }
+        .feed-item h3 {
+            margin: 0 0 6px 0;
+        }
+        .meta {
+            font-size: 0.85rem;
+            color: #5d6572;
+            margin-bottom: 8px;
+        }
+        .actions button {
+            margin-right: 8px;
+            margin-top: 6px;
+        }
+        .breaking-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #ededf5;
+        }
+        .breaking-item:last-child {
+            border-bottom: none;
+        }
+        .status {
+            font-size: 0.9rem;
+            margin-top: 6px;
+            color: #1d3557;
+        }
+        .error {
+            color: #b00020;
+        }
+        audio {
+            display: block;
+            margin-top: 10px;
+        }
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+        .image-preview {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        #feed-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        #refresh-feed {
+            background: #1d3557;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #refresh-feed:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Personal News Hub</h1>
+    </header>
+    <main>
+        <section>
+            <h2>Feed Controls</h2>
+            <div class="controls">
+                <label>
+                    User
+                    <select id="user-select"></select>
+                </label>
+                <label>
+                    Language
+                    <select id="language-select">
+                        <option value="en">English</option>
+                        <option value="zh">Chinese</option>
+                    </select>
+                </label>
+                <label>
+                    Limit
+                    <input type="number" id="limit-input" value="10" min="1" max="30">
+                </label>
+                <button id="refresh-feed">Refresh Feed</button>
+                <span id="feed-status" class="status"></span>
+            </div>
+        </section>
+
+        <section>
+            <h2>Topics</h2>
+            <div id="topic-list"></div>
+            <span id="topics-status" class="status"></span>
+        </section>
+
+        <section>
+            <h2>Breaking News</h2>
+            <div id="breaking-list"></div>
+            <span id="breaking-status" class="status"></span>
+        </section>
+
+        <section>
+            <h2>Personalized Feed</h2>
+            <div id="feed-list"></div>
+        </section>
+    </main>
+    <script>
+        const userSelect = document.getElementById('user-select');
+        const languageSelect = document.getElementById('language-select');
+        const limitInput = document.getElementById('limit-input');
+        const feedList = document.getElementById('feed-list');
+        const breakingList = document.getElementById('breaking-list');
+        const feedStatus = document.getElementById('feed-status');
+        const breakingStatus = document.getElementById('breaking-status');
+        const topicList = document.getElementById('topic-list');
+        const topicsStatus = document.getElementById('topics-status');
+        let availableTopics = [];
+        let userTopics = new Set();
+
+        async function fetchJson(url, options) {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                const body = await response.text();
+                throw new Error(`${response.status}: ${body}`);
+            }
+            return response.json();
+        }
+
+        function renderBreaking(items) {
+            breakingList.innerHTML = '';
+            if (!items.length) {
+                breakingList.innerHTML = '<p>No breaking news yet.</p>';
+                return;
+            }
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'breaking-item';
+                const published = new Date(item.published_at);
+                div.innerHTML = `
+                    <strong>${item.title}</strong>
+                    <div class="meta">
+                        ${item.publisher || item.type} &bull; ${published.toLocaleString()}
+                        ${item.language ? `&bull; ${item.language}` : ''}
+                    </div>
+                    ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener">Open story</a>` : ''}
+                `;
+                breakingList.appendChild(div);
+            });
+        }
+
+        function renderFeed(items) {
+            feedList.innerHTML = '';
+            if (!items.length) {
+                feedList.innerHTML = '<p>No items available for this user/language.</p>';
+                return;
+            }
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'feed-item';
+                const ttsAvailable = item.media_type === 'text' || item.media_type === 'audio';
+                const mediaLabel = item.media_type ? item.media_type.toUpperCase() : 'CONTENT';
+                let mediaExtras = '';
+                if (item.media_type === 'video' && item.video_manifest_url && item.video_manifest_url.startsWith('http')) {
+                    mediaExtras = `
+                        <div class="video-container">
+                            <iframe src="${item.video_manifest_url}" title="${item.title}"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowfullscreen></iframe>
+                        </div>`;
+                } else if (item.main_image_url) {
+                    mediaExtras = `<img class="image-preview" src="${item.main_image_url}" alt="Preview">`;
+                }
+                const ttsButton = ttsAvailable
+                    ? `<button data-item="${item.id}" data-lang="${languageSelect.value}" data-media="${item.media_type}">Listen (TTS)</button>`
+                    : '';
+                div.innerHTML = `
+                    <h3>${item.title}</h3>
+                    <div class="meta">
+                        ${item.publisher} &bull; ${new Date(item.publish_ts).toLocaleString()} &bull;
+                        ${mediaLabel} &bull; score ${item.score}
+                    </div>
+                    <p>${item.summary}</p>
+                    ${mediaExtras}
+                    <div class="actions">
+                        <a href="${item.url}" target="_blank" rel="noopener">Open Source</a>
+                        ${item.media_type === 'video' ? `<a href="${item.url}" target="_blank" rel="noopener">Watch Original</a>` : ''}
+                        ${ttsButton}
+                    </div>
+                    ${ttsAvailable ? `<audio controls hidden id="audio-${item.id}"></audio>` : ''}
+                `;
+                feedList.appendChild(div);
+            });
+        }
+
+        async function loadFeed() {
+            feedStatus.classList.remove('error');
+            feedStatus.textContent = 'Loading...';
+            try {
+                const userId = userSelect.value;
+                const lang = languageSelect.value;
+                const limit = limitInput.value;
+                const data = await fetchJson(`/feed?user_id=${userId}&lang=${lang}&limit=${limit}`);
+                renderFeed(data.items || []);
+                feedStatus.textContent = `Loaded ${data.items?.length || 0} items`;
+            } catch (err) {
+                console.error(err);
+                feedStatus.textContent = 'Failed to load feed';
+                feedStatus.classList.add('error');
+            }
+        }
+
+        async function loadBreaking() {
+            breakingStatus.classList.remove('error');
+            try {
+                const data = await fetchJson('/breaking?limit=10');
+                renderBreaking(data.items || []);
+                breakingStatus.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+            } catch (err) {
+                console.error(err);
+                breakingStatus.textContent = 'Failed to load breaking news';
+                breakingStatus.classList.add('error');
+            }
+        }
+
+        async function loadUsers() {
+            feedStatus.classList.remove('error');
+            try {
+                const data = await fetchJson('/users');
+                data.users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = `#${user.id} (${user.locale}, ${user.region})`;
+                    userSelect.appendChild(option);
+                });
+                if (data.users.length) {
+                    userSelect.value = data.users[0].id;
+                }
+            } catch (err) {
+                console.error(err);
+                feedStatus.textContent = 'Failed to load users';
+                feedStatus.classList.add('error');
+            }
+        }
+
+        function renderTopics() {
+            topicList.innerHTML = '';
+            if (!availableTopics.length) {
+                topicList.innerHTML = '<p>No topics found, ingest more items.</p>';
+                return;
+            }
+            const fragment = document.createDocumentFragment();
+            availableTopics.forEach(topic => {
+                const label = document.createElement('label');
+                label.style.display = 'inline-flex';
+                label.style.alignItems = 'center';
+                label.style.marginRight = '12px';
+                label.style.marginBottom = '8px';
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = topic.id;
+                if (userTopics.has(topic.id)) {
+                    input.checked = true;
+                }
+                input.addEventListener('change', () => toggleTopic(topic.id, input.checked));
+                label.appendChild(input);
+                const text = document.createTextNode(` ${topic.id} (${topic.count})`);
+                label.appendChild(text);
+                fragment.appendChild(label);
+            });
+            topicList.appendChild(fragment);
+        }
+
+        async function loadTopics() {
+            topicsStatus.classList.remove('error');
+            topicsStatus.textContent = 'Loading topics...';
+            try {
+                const data = await fetchJson('/topics');
+                availableTopics = data.topics || [];
+                renderTopics();
+                topicsStatus.textContent = `Loaded ${availableTopics.length} topics`;
+            } catch (err) {
+                console.error(err);
+                topicsStatus.textContent = 'Failed to load topics';
+                topicsStatus.classList.add('error');
+            }
+        }
+
+        async function loadUserInterests(userId) {
+            topicsStatus.classList.remove('error');
+            try {
+                const data = await fetchJson(`/users/${userId}/interests`);
+                userTopics = new Set(
+                    (data.interests || [])
+                        .filter(item => item.type === 'topic')
+                        .map(item => item.object_id)
+                );
+                renderTopics();
+                topicsStatus.textContent = `Selected ${userTopics.size} topics`;
+            } catch (err) {
+                console.error(err);
+                topicsStatus.textContent = 'Failed to load user interests';
+                topicsStatus.classList.add('error');
+            }
+        }
+
+        async function toggleTopic(topicId, enabled) {
+            const userId = userSelect.value;
+            try {
+                if (enabled) {
+                    await fetchJson('/interests', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            type: 'topic',
+                            object_id: topicId,
+                            weight: 1.0,
+                            language: 'any'
+                        })
+                    });
+                    userTopics.add(topicId);
+                } else {
+                    const response = await fetch('/interests', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            type: 'topic',
+                            object_id: topicId
+                        })
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Delete failed: ${response.status}`);
+                    }
+                    userTopics.delete(topicId);
+                }
+                topicsStatus.textContent = `Selected ${userTopics.size} topics`;
+                await loadFeed();
+            } catch (err) {
+                console.error(err);
+                topicsStatus.textContent = 'Failed to update topic';
+                topicsStatus.classList.add('error');
+                // revert checkbox state
+                const checkbox = topicList.querySelector(`input[value="${topicId}"]`);
+                if (checkbox) {
+                    checkbox.checked = !enabled;
+                }
+            }
+        }
+
+        async function requestTTS(itemId, lang) {
+            const card = document.querySelector(`button[data-item="${itemId}"]`)?.closest('.feed-item');
+            if (!card) {
+                return;
+            }
+            const status = document.createElement('span');
+            status.textContent = 'Generating audio...';
+            status.className = 'status';
+            card.appendChild(status);
+            try {
+                const asset = await fetchJson(`/item/${itemId}/tts?lang=${lang}`);
+                const audio = document.getElementById(`audio-${itemId}`);
+                audio.src = asset.audio_url;
+                audio.hidden = false;
+                audio.play().catch(() => {});
+                status.textContent = `Ready (${asset.voice})`;
+            } catch (err) {
+                console.error(err);
+                status.textContent = 'TTS failed';
+                status.classList.add('error');
+            }
+        }
+
+        document.getElementById('refresh-feed').addEventListener('click', () => {
+            loadFeed();
+            loadBreaking();
+        });
+
+        userSelect.addEventListener('change', async () => {
+            await loadUserInterests(userSelect.value);
+            await loadFeed();
+        });
+
+        languageSelect.addEventListener('change', () => {
+            loadFeed();
+        });
+
+        feedList.addEventListener('click', (event) => {
+            if (event.target.tagName === 'BUTTON') {
+                const itemId = event.target.dataset.item;
+                const lang = event.target.dataset.lang;
+                requestTTS(itemId, lang);
+            }
+        });
+
+        async function init() {
+            await loadUsers();
+            await loadTopics();
+            if (userSelect.value) {
+                await loadUserInterests(userSelect.value);
+            }
+            await Promise.all([loadFeed(), loadBreaking()]);
+            setInterval(loadBreaking, 30000);
+        }
+
+        init();
+    </script>
+</body>
+</html>
