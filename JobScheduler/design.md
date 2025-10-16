@@ -76,7 +76,7 @@ Headers:
 Idempotency-Key: <unique-uuid-per-request>
 
 Request Body:
-
+```
 {
   "job_type": "ad_hoc", // "ad_hoc" or "cron"
   "execution_details": {
@@ -95,29 +95,30 @@ Request Body:
     "backoff_strategy": "exponential"
   }
 }
+```
 
 
 Success Response (202 Accepted):
-
+```
 {
   "job_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
   "status": "SCHEDULED",
   "message": "Job accepted and scheduled."
 }
-
+```
 
 GET /v1/jobs/{job_id}
 
 Retrieves the current status and details of a job.
 
 Success Response (200 OK):
-
+```
 {
   "job_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
   "status": "COMPLETED",
   ...
 }
-
+```
 
 4. Data Model and Database Design
 
@@ -126,7 +127,7 @@ Success Response (200 OK):
 A distributed NoSQL database like Apache Cassandra is the primary choice for its linear scalability and masterless architecture. Its high write throughput is ideal for our API-intensive service.
 
 4.2. jobs Table Schema
-
+```
 CREATE TABLE jobs (
     job_id UUID,
     time_bucket TIMESTAMP, -- Partition key, e.g., truncated to the hour
@@ -141,7 +142,7 @@ CREATE TABLE jobs (
     updated_at TIMESTAMP,
     PRIMARY KEY ((time_bucket), execution_time, job_id)
 ) WITH CLUSTERING ORDER BY (execution_time ASC);
-
+```
 
 Key Design Choices:
 
