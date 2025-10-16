@@ -81,7 +81,8 @@ Request Body:
   "job_type": "ad_hoc", // "ad_hoc" or "cron"
   "execution_details": {
     "execution_time_utc": "2025-12-01T10:00:00Z", // For ad_hoc jobs
-    "cron_expression": "0 5 * * *" // For cron jobs
+    "cron_expression": "0 5 * * *", // For cron jobs
+    "start_time_utc": "2025-12-01T00:00:00Z" // Optional anchor for cron jobs
   },
   "task": {
     "type": "http_callback",
@@ -103,6 +104,7 @@ Success Response (202 Accepted):
 {
   "job_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
   "status": "SCHEDULED",
+  "next_run_time_utc": "2025-12-01T10:00:00Z",
   "message": "Job accepted and scheduled."
 }
 ```
