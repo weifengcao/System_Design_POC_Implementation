@@ -25,6 +25,74 @@
 - TTS requests: **0.5–1.5M/day** (≈3–10% of reads).
 
 ## 3) High‑Level Architecture
+```mermaid
+graph TD
+    subgraph "External Sources"
+        Sources["RSS / APIs / Crawlers"]
+    end
+
+    subgraph "A) Ingestion & Curation Pipeline"
+        Fetcher --> Normalizer
+        Normalizer --> Enrichment["Enrichment Stream (Kafka + Flink/Spark)"]
+        Enrichment --> ProcessedData{{Enriched Article Data}}
+    end
+
+    subgraph "B) Storage Layer"
+        ProcessedData --> S3[("Object Store<br>Raw Assets: HTML, Images")]
+        ProcessedData --> Cassandra[("Metadata DB<br>Cassandra / Postgres")]
+        ProcessedData --> VectorDB[("Vector Index<br>FAISS / Elasticsearch kNN")]
+    end
+
+    subgraph "D) Event & ML Pipeline (Feedback Loop)"
+        Client -- "Impressions, Clicks" --> EventPipeline["Event Pipeline (Kafka)"]
+        EventPipeline --> StreamProcessing["Stream Processing (Flink/Spark)<br>CTR Models, Trending, Clustering"]
+        StreamProcessing --> FeatureStore[("Feature Store<br>Redis / BigStore")]
+        StreamProcessing --> ModelServing["Model Serving<br>Candidate Gen, LTR Models"]
+    end
+
+    subgraph "C) Online Serving Layer"
+        APIGateway["API Gateway<br>REST / gRPC / WebSockets"]
+
+        subgraph "Serving Services"
+            FeedService["Feed Service"]
+            SearchService["Search/Explore Service"]
+            TTSService["TTS Service"]
+            BreakingNewsService["Breaking News Service"]
+        end
+
+        APIGateway --> FeedService
+        APIGateway --> SearchService
+        APIGateway --> TTSService
+        APIGateway -.-> BreakingNewsService
+
+        FeedService -- "User Prefs" --> UserProfile[("User Profile Store")]
+        FeedService -- "Get Candidates" --> SearchService
+        FeedService -- "Get Ranked Candidates" --> ModelServing
+        FeedService -- "Hydrate Metadata" --> Cassandra
+        
+        SearchService -- "Query" --> Cassandra
+        SearchService -- "Semantic Search" --> VectorDB
+        
+        TTSService -- "Get Article Text" --> Cassandra
+        TTSService -- "On-demand & Cached Audio" --> CDN
+        
+        BreakingNewsService -- "Pub/Sub Fan-out" --> PushService["Push Notification Service"]
+        PushService -- "APNs / FCM" --> Client
+    end
+
+    subgraph "E) Delivery & Edge"
+        Client["User Device"]
+        CDN["CDN"]
+        EdgeCache["Edge Caches"]
+    end
+
+    Sources --> Fetcher
+    
+    FeedService --> EdgeCache
+    EdgeCache --> Client
+    S3 --> CDN
+    CDN --> Client
+```
 
 **Ingestion & Curation**
 - **Fetcher**: RSS/APIs/crawlers/webhooks from publishers.
