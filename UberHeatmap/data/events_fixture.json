@@ -1,0 +1,47 @@
+[
+  {
+    "event_id": "evt_fixture_1",
+    "event_type": "ride_request",
+    "timestamp": "2025-10-17T21:34:30Z",
+    "latitude": 37.7755,
+    "longitude": -122.4192,
+    "city_id": "san_francisco",
+    "metadata": {"source": "fixture"}
+  },
+  {
+    "event_id": "evt_fixture_2",
+    "event_type": "ride_request",
+    "timestamp": "2025-10-17T21:34:40Z",
+    "latitude": 37.7762,
+    "longitude": -122.4201,
+    "city_id": "san_francisco",
+    "metadata": {"source": "fixture"}
+  },
+  {
+    "event_id": "evt_fixture_3",
+    "event_type": "driver_ping",
+    "timestamp": "2025-10-17T21:35:10Z",
+    "latitude": 37.7741,
+    "longitude": -122.4185,
+    "city_id": "san_francisco",
+    "metadata": {"source": "fixture"}
+  },
+  {
+    "event_id": "evt_fixture_4",
+    "event_type": "ride_request",
+    "timestamp": "2025-10-17T21:35:20Z",
+    "latitude": 37.7759,
+    "longitude": -122.4199,
+    "city_id": "san_francisco",
+    "metadata": {"source": "fixture"}
+  },
+  {
+    "event_id": "evt_fixture_5",
+    "event_type": "driver_ping",
+    "timestamp": "2025-10-17T21:35:45Z",
+    "latitude": 37.7752,
+    "longitude": -122.4181,
+    "city_id": "san_francisco",
+    "metadata": {"source": "fixture"}
+  }
+]

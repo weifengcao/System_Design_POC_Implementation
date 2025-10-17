@@ -1,0 +1,38 @@
+[
+  {
+    "event_id": "evt_multicity_1",
+    "event_type": "ride_request",
+    "timestamp": "2025-10-17T21:30:10Z",
+    "latitude": 37.7751,
+    "longitude": -122.4195,
+    "city_id": "san_francisco",
+    "metadata": {"source": "fixture_multicity"}
+  },
+  {
+    "event_id": "evt_multicity_2",
+    "event_type": "driver_ping",
+    "timestamp": "2025-10-17T21:30:05Z",
+    "latitude": 40.7126,
+    "longitude": -74.0063,
+    "city_id": "new_york",
+    "metadata": {"source": "fixture_multicity"}
+  },
+  {
+    "event_id": "evt_multicity_3",
+    "event_type": "ride_request",
+    "timestamp": "2025-10-17T21:29:55Z",
+    "latitude": 40.7131,
+    "longitude": -74.0055,
+    "city_id": "new_york",
+    "metadata": {"source": "fixture_multicity", "note": "out_of_order"}
+  },
+  {
+    "event_id": "evt_multicity_4",
+    "event_type": "ride_request",
+    "timestamp": "2025-10-17T21:31:00Z",
+    "latitude": 37.7748,
+    "longitude": -122.4188,
+    "city_id": "san_francisco",
+    "metadata": {"source": "fixture_multicity"}
+  }
+]
