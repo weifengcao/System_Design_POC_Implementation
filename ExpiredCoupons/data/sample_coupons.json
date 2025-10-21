@@ -1,0 +1,72 @@
+[
+  {
+    "coupon_id": "COUP-1001",
+    "merchant_id": "M-ALPHA",
+    "campaign": "Summer Splash",
+    "customer_contact": {
+      "email": "user1@example.com",
+      "sms": "+15550000001",
+      "push_token": "device-001"
+    },
+    "expires_at": "2024-07-10T23:00:00Z",
+    "channels": ["ecommerce", "pos"],
+    "state": "issued",
+    "face_value": 10.0
+  },
+  {
+    "coupon_id": "COUP-1002",
+    "merchant_id": "M-ALPHA",
+    "campaign": "Summer Splash",
+    "customer_contact": {
+      "email": "user2@example.com",
+      "sms": "+15550000002",
+      "push_token": null
+    },
+    "expires_at": "2024-07-10T22:30:00Z",
+    "channels": ["ecommerce"],
+    "state": "reserved",
+    "face_value": 25.0
+  },
+  {
+    "coupon_id": "COUP-1003",
+    "merchant_id": "M-BETA",
+    "campaign": "Flash Friday",
+    "customer_contact": {
+      "email": "user3@example.com",
+      "sms": null,
+      "push_token": "device-003"
+    },
+    "expires_at": "2024-07-10T21:59:00Z",
+    "channels": ["pos"],
+    "state": "issued",
+    "face_value": 5.0
+  },
+  {
+    "coupon_id": "COUP-1004",
+    "merchant_id": "M-BETA",
+    "campaign": "Flash Friday",
+    "customer_contact": {
+      "email": "user4@example.com",
+      "sms": "+15550000004",
+      "push_token": "device-004"
+    },
+    "expires_at": "2024-07-10T22:45:00Z",
+    "channels": ["ecommerce", "marketplace"],
+    "state": "redeemed",
+    "face_value": 15.0
+  },
+  {
+    "coupon_id": "COUP-1005",
+    "merchant_id": "M-GAMMA",
+    "campaign": "Holiday Warmup",
+    "customer_contact": {
+      "email": "user5@example.com",
+      "sms": "+15550000005",
+      "push_token": "device-005"
+    },
+    "expires_at": "2024-07-10T23:59:00Z",
+    "channels": ["ecommerce"],
+    "state": "issued",
+    "face_value": 50.0
+  }
+]

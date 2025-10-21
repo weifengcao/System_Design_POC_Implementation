@@ -1,0 +1,14 @@
+{
+  "po_id": "PO-2025-0715",
+  "category": "life_sciences",
+  "description": "Sterile packaging components for new injectable product line",
+  "quantity": 50000,
+  "target_price_per_unit": 1.85,
+  "current_supplier": "LegacyPack Inc",
+  "benchmark_price_per_unit": 2.05,
+  "region": "NA",
+  "required_certifications": ["ISO 13485"],
+  "budget_ceiling": 120000,
+  "timeline_weeks": 14,
+  "notes": "Preference for sustainable materials; include diversity supplier if possible."
+}

@@ -1,0 +1,50 @@
+[
+  {
+    "supplier_id": "SUP-ALPHA",
+    "name": "Alpha Packaging Group",
+    "categories": ["packaging", "consumer_goods"],
+    "regions": ["NA", "EU"],
+    "diversity": ["WBE"],
+    "certifications": ["ISO 9001", "ISO 14001"],
+    "benchmark_price_index": 0.92,
+    "risk_score": 0.2,
+    "email": "sales@alphapackaging.com",
+    "notes": "Strong sustainability record, responsive in prior negotiations."
+  },
+  {
+    "supplier_id": "SUP-BETA",
+    "name": "Beta Industrial Solutions",
+    "categories": ["machinery", "components"],
+    "regions": ["NA"],
+    "diversity": [],
+    "certifications": ["ISO 9001"],
+    "benchmark_price_index": 1.05,
+    "risk_score": 0.45,
+    "email": "rfq@betaindustrial.io",
+    "notes": "Competitive pricing but slower lead times."
+  },
+  {
+    "supplier_id": "SUP-GAMMA",
+    "name": "Gamma Bio Manufacturing",
+    "categories": ["life_sciences", "packaging"],
+    "regions": ["NA", "APAC"],
+    "diversity": ["MBE"],
+    "certifications": ["ISO 13485"],
+    "risk_score": 0.35,
+    "benchmark_price_index": 0.88,
+    "email": "business@gammabio.com",
+    "notes": "Specializes in sterile packaging; compliant with FDA/ISO standards."
+  },
+  {
+    "supplier_id": "SUP-DELTA",
+    "name": "Delta Global Procurement",
+    "categories": ["packaging", "logistics"],
+    "regions": ["EU"],
+    "diversity": [],
+    "certifications": ["ISO 9001"],
+    "risk_score": 0.6,
+    "benchmark_price_index": 0.95,
+    "email": "contact@deltagp.eu",
+    "notes": "Currently on probation due to late deliveries in Q2."
+  }
+]

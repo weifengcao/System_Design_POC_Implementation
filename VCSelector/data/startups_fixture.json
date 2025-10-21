@@ -1,0 +1,138 @@
+[
+  {
+    "startup_id": "STR-ALPHA",
+    "name": "Alpha Analytics",
+    "sector": "AI",
+    "stage": "Series A",
+    "funding_history": {
+      "total_raised_musd": 18.5,
+      "last_round_months_ago": 9,
+      "lead_investor": "Sequoia Capital"
+    },
+    "team": {
+      "founders": 3,
+      "founder_exits": 1,
+      "avg_years_experience": 7
+    },
+    "traction": {
+      "arr_musd": 6.2,
+      "arr_growth_qoq_pct": 35,
+      "customers": 420,
+      "nps": 54
+    },
+    "market": {
+      "tam_musd": 1200,
+      "competition_intensity": "medium"
+    },
+    "signals": [
+      {"type": "news_sentiment", "score": 0.72},
+      {"type": "product_release", "score": 0.9}
+    ],
+    "portfolio_metrics": {
+      "burn_multiple": 1.8,
+      "runway_months": 18
+    }
+  },
+  {
+    "startup_id": "STR-BETA",
+    "name": "Beta Biotech",
+    "sector": "BioTech",
+    "stage": "Seed",
+    "funding_history": {
+      "total_raised_musd": 2.2,
+      "last_round_months_ago": 6,
+      "lead_investor": "Indie Angels"
+    },
+    "team": {
+      "founders": 2,
+      "founder_exits": 0,
+      "avg_years_experience": 4
+    },
+    "traction": {
+      "arr_musd": 0.8,
+      "arr_growth_qoq_pct": 120,
+      "customers": 12,
+      "nps": 35
+    },
+    "market": {
+      "tam_musd": 800,
+      "competition_intensity": "low"
+    },
+    "signals": [
+      {"type": "regulatory_update", "score": 0.6},
+      {"type": "news_sentiment", "score": 0.55}
+    ],
+    "portfolio_metrics": {
+      "burn_multiple": 3.1,
+      "runway_months": 10
+    }
+  },
+  {
+    "startup_id": "STR-GAMMA",
+    "name": "Gamma Grid",
+    "sector": "ClimateTech",
+    "stage": "Series B",
+    "funding_history": {
+      "total_raised_musd": 45,
+      "last_round_months_ago": 15,
+      "lead_investor": "Energy Ventures"
+    },
+    "team": {
+      "founders": 4,
+      "founder_exits": 2,
+      "avg_years_experience": 10
+    },
+    "traction": {
+      "arr_musd": 20.0,
+      "arr_growth_qoq_pct": 15,
+      "customers": 110,
+      "nps": 62
+    },
+    "market": {
+      "tam_musd": 2200,
+      "competition_intensity": "high"
+    },
+    "signals": [
+      {"type": "news_sentiment", "score": 0.81},
+      {"type": "social_engagement", "score": 0.65}
+    ],
+    "portfolio_metrics": {
+      "burn_multiple": 1.3,
+      "runway_months": 24
+    }
+  },
+  {
+    "startup_id": "STR-DELTA",
+    "name": "Delta Devices",
+    "sector": "Hardware",
+    "stage": "Series A",
+    "funding_history": {
+      "total_raised_musd": 12.0,
+      "last_round_months_ago": 4,
+      "lead_investor": "Accel"
+    },
+    "team": {
+      "founders": 2,
+      "founder_exits": 1,
+      "avg_years_experience": 8
+    },
+    "traction": {
+      "arr_musd": 4.1,
+      "arr_growth_qoq_pct": 22,
+      "customers": 75,
+      "nps": 41
+    },
+    "market": {
+      "tam_musd": 600,
+      "competition_intensity": "medium"
+    },
+    "signals": [
+      {"type": "supply_chain_risk", "score": 0.3},
+      {"type": "news_sentiment", "score": 0.4}
+    ],
+    "portfolio_metrics": {
+      "burn_multiple": 2.6,
+      "runway_months": 8
+    }
+  }
+]
