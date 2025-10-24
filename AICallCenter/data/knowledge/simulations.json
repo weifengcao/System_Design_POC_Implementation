@@ -1,0 +1,20 @@
+[
+  {
+    "intent": "order_status",
+    "customer": "I want to check the status of my order 12345.",
+    "response": "Sure, let me look up order 12345. It is scheduled to arrive on Friday. I'll send you the tracking link.",
+    "tags": ["order", "status"]
+  },
+  {
+    "intent": "return_request",
+    "customer": "I'd like to return my headphones, they arrived yesterday.",
+    "response": "You can return items within 30 days. I've emailed a prepaid shipping label. Is there anything else I can help with today?",
+    "tags": ["returns"]
+  },
+  {
+    "intent": "billing_issue",
+    "customer": "My credit card was charged twice.",
+    "response": "I'm checking your billing history now. I see two charges on your credit card; I'll refund the duplicate within 3-5 business days.",
+    "tags": ["billing"]
+  }
+]
