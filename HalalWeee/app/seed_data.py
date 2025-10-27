@@ -4,14 +4,15 @@ from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
-from . import crud, database, schemas
+from . import database, schemas
+from .services import certifications, orders, products, suppliers, warehouses
 
 
 def main() -> None:
     database.Base.metadata.create_all(database.engine)
     db: Session = database.SessionLocal()
     try:
-        existing_products = crud.list_products(db)
+        existing_products = products.list_products(db)
         if existing_products:
             print("Database already seeded; skipping.")
             return
@@ -23,7 +24,7 @@ def main() -> None:
             contact_phone="+1-555-0101",
             address="123 Crescent Way, Chicago, IL",
         )
-        supplier = crud.create_supplier(db, supplier_payload)
+        supplier = suppliers.create_supplier(db, supplier_payload)
 
         today = date.today()
         cert_payload = schemas.CertificationCreate(
@@ -36,8 +37,8 @@ def main() -> None:
             document_url="https://example.com/certs/ifanca-2024-001.pdf",
             audit_notes="Approved after facility walkthrough.",
         )
-        cert = crud.create_certification(db, cert_payload)
-        crud.link_supplier_certification(
+        cert = certifications.create_certification(db, cert_payload)
+        suppliers.link_supplier_certification(
             db,
             supplier,
             cert,
@@ -50,7 +51,7 @@ def main() -> None:
             address="2200 S Halal Ave, Chicago, IL",
             temp_capabilities="ambient,chilled,frozen",
         )
-        warehouse = crud.create_warehouse(db, warehouse_payload)
+        warehouse = warehouses.create_warehouse(db, warehouse_payload)
 
         product_payload = schemas.ProductCreate(
             sku="HALAL-CHIC-001",
@@ -63,7 +64,7 @@ def main() -> None:
             country_of_origin="USA",
             supplier_id=supplier.id,
         )
-        product = crud.create_product(db, product_payload)
+        product = products.create_product(db, product_payload)
 
         lot_payload = schemas.InventoryLotCreate(
             warehouse_id=warehouse.id,
@@ -76,14 +77,14 @@ def main() -> None:
             status="available",
             telemetry_alert=False,
         )
-        crud.create_inventory_lot(db, product, lot_payload)
+        products.create_inventory_lot(db, product, lot_payload)
 
         price_payload = schemas.ProductPriceCreate(
             currency="USD",
             amount_cents=1499,
             price_type="regular",
         )
-        crud.create_product_price(db, product, price_payload)
+        products.create_product_price(db, product, price_payload)
 
         promo_payload = schemas.ProductPriceCreate(
             currency="USD",
@@ -92,7 +93,7 @@ def main() -> None:
             starts_on=today - timedelta(days=1),
             ends_on=today + timedelta(days=3),
         )
-        crud.create_product_price(db, product, promo_payload)
+        products.create_product_price(db, product, promo_payload)
 
         order_payload = schemas.OrderCreate(
             customer_email="sara@example.com",
@@ -106,7 +107,7 @@ def main() -> None:
                 )
             ],
         )
-        crud.create_order(db, order_payload)
+        orders.create_order(db, order_payload)
 
         print("Seed data inserted.")
     finally:
