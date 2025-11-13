@@ -36,9 +36,9 @@ OrbManager is a multi-tenant, cloud-native control plane that manages fleets of 
 flowchart LR
     subgraph DP[Data Plane]
         Orbs[Orbs & Edge Gateways]
-        IGW[Ingestion Gateway<br/>(mTLS,WAF)]
-        Router[Stream Router<br/>(Kafka/Kinesis)]
-        TSDB[Telemetry DB<br/>(TSDB + S3)]
+        IGW["Ingestion Gateway<br/>(mTLS,WAF)"]
+        Router["Stream Router<br/>(Kafka/Kinesis)"]
+        TSDB["Telemetry DB<br/>(TSDB + S3)"]
         Rules[Rules Engine]
         Alerts[Alerts/Webhooks]
         Orbs -- MQTT/HTTP --> IGW --> Router --> TSDB
