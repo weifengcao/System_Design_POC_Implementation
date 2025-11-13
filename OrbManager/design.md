@@ -50,7 +50,7 @@ flowchart LR
         CommandSvc[Command Service]
         OTA[OTA Orchestrator]
         Artifact[Artifact Store]
-        Cache[Device State Cache (Redis)]
+        Cache[Device State Cache - Redis]
         Ops[Ops API/UI]
         Workflow[Workflow Engine]
         Registry --> CommandSvc
