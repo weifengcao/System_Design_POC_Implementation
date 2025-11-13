@@ -32,29 +32,45 @@ OrbManager is a multi-tenant, cloud-native control plane that manages fleets of 
 - Long-term cold storage analytics lake build-out (only S3 raw dumps now).
 
 ## 3. High-Level Architecture
-```
-┌──────────────┐   TLS MQTT   ┌──────────────┐   Internal gRPC    ┌──────────────┐
-│ Orbs & Edge  ├─────────────►│ Ingestion GW │ ─┬─► Stream Router ─►│ Telemetry DB │
-│ Gateways     │   HTTP Fallback  (mTLS, WAF) │ │  (Kafka/Kinesis)  │ (TSDB + S3)  │
-└──────────────┘                 │             │ │                   └────┬───────┘
-                                 │             │ │                        │
-                                 │             │ │                    Rules Engine
-                                 │             │ │                        │
-                                 │             │ │                 Alerts/Webhooks
-                                 │             │ │
-                                 ▼             ▼ ▼
-                           Device Registry  Command Service◄───Ops API/UI
-                                 │             │  ▲
-                                 │             │  │Command Bus (Kafka/SQS)
-                                 ▼             │  │
-                          OTA Orchestrator ───┘  │
-                                 │                │
-                           Artifact Store     Device State Cache (Redis)
+```mermaid
+flowchart LR
+    subgraph DP[Data Plane]
+        Orbs[Orbs & Edge Gateways]
+        IGW[Ingestion Gateway<br/>(mTLS,WAF)]
+        Router[Stream Router<br/>(Kafka/Kinesis)]
+        TSDB[Telemetry DB<br/>(TSDB + S3)]
+        Rules[Rules Engine]
+        Alerts[Alerts/Webhooks]
+        Orbs -- MQTT/HTTP --> IGW --> Router --> TSDB
+        Router --> Rules --> Alerts
+    end
+
+    subgraph CP[Control Plane]
+        Registry[Device Registry]
+        CommandSvc[Command Service]
+        OTA[OTA Orchestrator]
+        Artifact[Artifact Store]
+        Cache[Device State Cache (Redis)]
+        Ops[Ops API/UI]
+        Workflow[Workflow Engine]
+        Registry --> CommandSvc
+        CommandSvc --> OTA
+        OTA --> Artifact
+        CommandSvc --> Cache
+        Ops --> Registry
+        Ops --> CommandSvc
+        Ops --> Workflow
+        Workflow --> CommandSvc
+    end
+
+    Alerts -.-> Ops
+    CommandSvc -->|Command Bus| Router
+    IGW <-->|Command/OTA| CommandSvc
 ```
 
-**Control Plane Services** (stateless, autoscaled): API Gateway, Device Registry Service, Command Service, OTA Orchestrator, Workflow Engine, User/Tenant Service. They rely on managed data stores (Aurora PostgreSQL for metadata, DynamoDB for hot state, Redis for low-latency caches) and stream backbone (Kafka/Kinesis) for telemetry/commands/events.
+**Control Plane Services** (stateless, autoscaled): API Gateway, Device Registry Service, Command Service, OTA Orchestrator, Workflow Engine, User/Tenant Service. They rely on managed data stores (Aurora PostgreSQL for metadata, DynamoDB for hot state, Redis for low-latency caches) and stream backbone (Kafka/Kinesis) for telemetry/commands/events. The Ops API/UI and workflow automation surface sit entirely in this plane.
 
-**Data Plane**: Device agent communicates via MQTT topics partitioned by tenant/device; messages forwarded by AWS IoT Core equivalent to an internal Ingestion Gateway (custom service deployed in multiple AZs with autoscaling). Telemetry is enriched, validated, written to a time-series DB (Amazon Timestream or ClickHouse) and S3 data lake. Commands are persisted, acknowledgement tracked, retries scheduled.
+**Data Plane**: Device agents publish/consume via MQTT topics partitioned by tenant/device; messages flow through the Ingestion Gateway, stream router, and durable telemetry stores. This plane prioritizes low-latency, high-throughput handling of orb traffic, supports fan-out to rules/alerting, and back-propagates results (commands, OTA payloads) through the gateway for device consumption.
 
 ## 4. Data Model Overview
 | Domain | Store | Key Entities |
