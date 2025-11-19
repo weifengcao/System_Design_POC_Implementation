@@ -1,0 +1,139 @@
+{
+  "users": [
+    {
+      "user_id": "8ddbec2250424088a4d198fdff4c2a72",
+      "name": "Alice",
+      "roles": [
+        "admin"
+      ]
+    },
+    {
+      "user_id": "1a616e9c5c5a45f88112ad924bc4a468",
+      "name": "Bob",
+      "roles": [
+        "member"
+      ]
+    },
+    {
+      "user_id": "e4852e462d284755a7110caaf709481a",
+      "name": "Chloe",
+      "roles": [
+        "member"
+      ]
+    },
+    {
+      "user_id": "4bb56a4ac3f4456d9dfef42a501336b4",
+      "name": "Mallory",
+      "roles": [
+        "member"
+      ]
+    }
+  ],
+  "rooms": [
+    {
+      "room_id": "f6f90b82fb9c4bc8826a5f831a0741b9",
+      "name": "launch-war-room",
+      "owner_id": "8ddbec2250424088a4d198fdff4c2a72",
+      "is_private": true,
+      "members": {
+        "8ddbec2250424088a4d198fdff4c2a72": "owner",
+        "1a616e9c5c5a45f88112ad924bc4a468": "member",
+        "e4852e462d284755a7110caaf709481a": "member"
+      },
+      "messages": [
+        {
+          "message_id": "d4ac3419560d49598a633834fa89f240",
+          "room_id": "f6f90b82fb9c4bc8826a5f831a0741b9",
+          "sender_id": "8ddbec2250424088a4d198fdff4c2a72",
+          "sender_name": "Alice",
+          "body": "Welcome team. @Orion keep track of action items.",
+          "created_at": "2025-11-19T20:44:42.713361+00:00",
+          "redacted": false,
+          "metadata": {
+            "risk_score": "0.05",
+            "moderation_reason": "clean"
+          }
+        },
+        {
+          "message_id": "7248b64005194974ab2ae1a4183551ce",
+          "room_id": "f6f90b82fb9c4bc8826a5f831a0741b9",
+          "sender_id": "32aef1fe51b244e59288e76a6cb79f63",
+          "sender_name": "Orion",
+          "body": "Hi Alice, I'm tracking this room. Summary insight: Room 'launch-war-room' summary: Last 1 highlights: - Alice: Welcome team. @Orion keep track of action items. Key observations: Room 'launch-war-room' summary: Last 1 highlights: - Alice: Welcome team. @Orion keep track of action items. Recent messages: [20:44:42] Alice: Welcome team. @Orion keep track of action items. Suggested plan: Welcome team. @Orion keep track of action items.",
+          "created_at": "2025-11-19T20:44:42.713587+00:00",
+          "redacted": false,
+          "metadata": {}
+        },
+        {
+          "message_id": "1bf82197a64e407eae472673de5894f4",
+          "room_id": "f6f90b82fb9c4bc8826a5f831a0741b9",
+          "sender_id": "1a616e9c5c5a45f88112ad924bc4a468",
+          "sender_name": "Bob",
+          "body": "TODO finalize onboarding spec by Friday.",
+          "created_at": "2025-11-19T20:44:42.713778+00:00",
+          "redacted": false,
+          "metadata": {
+            "risk_score": "0.05",
+            "moderation_reason": "clean"
+          }
+        },
+        {
+          "message_id": "7e4a5c45aea0485e89e5c5416e4272b3",
+          "room_id": "f6f90b82fb9c4bc8826a5f831a0741b9",
+          "sender_id": "e4852e462d284755a7110caaf709481a",
+          "sender_name": "Chloe",
+          "body": "Next: schedule dry-run with Sales.",
+          "created_at": "2025-11-19T20:44:42.713975+00:00",
+          "redacted": false,
+          "metadata": {
+            "risk_score": "0.05",
+            "moderation_reason": "clean"
+          }
+        },
+        {
+          "message_id": "be6705fdc45d44c19b09aa7ea02f2173",
+          "room_id": "f6f90b82fb9c4bc8826a5f831a0741b9",
+          "sender_id": "1a616e9c5c5a45f88112ad924bc4a468",
+          "sender_name": "Bob",
+          "body": "Reminder: never share [redacted] or [redacted] in chat.",
+          "created_at": "2025-11-19T20:44:42.714381+00:00",
+          "redacted": true,
+          "metadata": {
+            "risk_score": "0.95",
+            "moderation_reason": "contains banned keyword 'ssn'"
+          }
+        },
+        {
+          "message_id": "600ee922fffb4094879d46c7d2070a6c",
+          "room_id": "f6f90b82fb9c4bc8826a5f831a0741b9",
+          "sender_id": "8ddbec2250424088a4d198fdff4c2a72",
+          "sender_name": "Alice",
+          "body": "@orion summarize current plan.",
+          "created_at": "2025-11-19T20:44:42.714707+00:00",
+          "redacted": false,
+          "metadata": {
+            "risk_score": "0.05",
+            "moderation_reason": "clean"
+          }
+        },
+        {
+          "message_id": "502a54435af647d5a199814e150cd4ba",
+          "room_id": "f6f90b82fb9c4bc8826a5f831a0741b9",
+          "sender_id": "32aef1fe51b244e59288e76a6cb79f63",
+          "sender_name": "Orion",
+          "body": "Hi Alice, I'm tracking this room. Summary insight: Room 'launch-war-room' summary: Last 5 highlights: - Orion: Hi Alice, I'm tracking this room. Summary insight: Room 'launch-war-room' su Key observations: Room 'launch-war-room' summary: Last 5 highlights: - Orion: Hi Alice, I'm tracking this room. Summary insight: Room 'launch-war-room' summary: Last 1 highlights: - Alice: Welco Suggested plan: Welcome team. @Orion keep track of action items.; Hi Alice, I'm tracking this room. Summary insight: Room 'launch-war-room' summary: Last 1 highlights: - Alice: Welcome team. @Orion keep track of action items. Key observations: Room 'launch-war-room' summary: Last 1 highlights: - Alice: Welcome team. @Orion keep track of action items. Recent messages: [20:44:42] Alice: Welcome team. @Orion keep track of action items. Suggested plan: Welcome team. @Orion keep track of action items.; TODO finalize onboarding spec by Friday.",
+          "created_at": "2025-11-19T20:44:42.715421+00:00",
+          "redacted": false,
+          "metadata": {}
+        }
+      ],
+      "agent": {
+        "agent_id": "32aef1fe51b244e59288e76a6cb79f63",
+        "name": "Orion",
+        "trigger_mode": "mention",
+        "summary_window": 5
+      },
+      "summary": "Room 'launch-war-room' summary:\n            Last 5 highlights:\n            - Orion: Hi Alice, I'm tracking this room. Summary insight: Room 'launch-war-room' summary: Last 1 highlights: - Alice: Welcome team. @Orion keep track of action items. \n- Bob: TODO finalize onboarding spec by Friday.\n- Chloe: Next: schedule dry-run with Sales.\n- Bob: Reminder: never share [redacted] or [redacted] in chat.\n- Alice: @orion summarize current plan."
+    }
+  ]
+}
