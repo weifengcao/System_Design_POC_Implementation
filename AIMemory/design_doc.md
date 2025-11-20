@@ -32,8 +32,8 @@ graph TD
         Worker -->|Read/Write| Postgres[(PostgreSQL)]
         Worker -->|Read/Write| Chroma[(ChromaDB)]
         
-        API -->|Read (Search)| Chroma
-        API -->|Read (History)| Postgres
+        API -->|Read Search| Chroma
+        API -->|Read History| Postgres
     end
     
     style Client fill:#f9f,stroke:#333,stroke-width:2px
@@ -91,4 +91,3 @@ graph TD
 - `POST /memory`: Add a new memory (Async, Idempotent).
 - `POST /memory/search`: Semantic search.
 - `GET /sessions/{id}/history`: Get full history.
-

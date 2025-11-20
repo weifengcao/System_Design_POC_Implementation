@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  aitrust-api:
+    build: .
+    ports:
+      - "8001:8000" # Port 8001 to avoid conflict with AIMemory
+    environment:
+      - APP_NAME=AITrust Layer
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+    secrets:
+      - postgres_password
+      - redis_password
+      - aitrust_api_key
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - aitrust-net
+    restart: unless-stopped
+
+  aitrust-worker:
+    build: .
+    command: celery -A core.celery_app worker --loglevel=info
+    environment:
+      - APP_NAME=AITrust Layer
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+    secrets:
+      - postgres_password
+      - redis_password
+      - aitrust_api_key
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - aitrust-net
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_DB=aitrust
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - aitrust-net
+
+  redis:
+    image: redis:7-alpine
+    command: /bin/sh -c "redis-server --requirepass $$(cat /run/secrets/redis_password)"
+    secrets:
+      - redis_password
+    networks:
+      - aitrust-net
+
+volumes:
+  postgres_data:
+
+
+networks:
+  aitrust-net:
+    driver: bridge
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  aitrust_api_key:
+    file: ./secrets/aitrust_api_key.txt
