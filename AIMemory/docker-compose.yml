@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  aimemory-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=LLM Memory Layer
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - ENABLE_PII_REDACTION=True
+    secrets:
+      - postgres_password
+      - redis_password
+      - aimemory_api_key
+    depends_on:
+      - postgres
+      - redis
+      - chromadb
+    networks:
+      - aimemory-net
+    restart: unless-stopped
+
+  aimemory-worker:
+    build: .
+    command: celery -A core.celery_app worker --loglevel=info
+    environment:
+      - APP_NAME=LLM Memory Layer
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - ENABLE_PII_REDACTION=True
+    secrets:
+      - postgres_password
+      - redis_password
+      - aimemory_api_key
+    depends_on:
+      - postgres
+      - redis
+      - chromadb
+    networks:
+      - aimemory-net
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_DB=aimemory
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - aimemory-net
+
+  redis:
+    image: redis:7-alpine
+    # Use a shell to read the secret and start redis
+    command: /bin/sh -c "redis-server --requirepass $$(cat /run/secrets/redis_password)"
+    secrets:
+      - redis_password
+    networks:
+      - aimemory-net
+
+  chromadb:
+    image: chromadb/chroma:latest
+    volumes:
+      - chroma_data:/chroma/chroma
+    networks:
+      - aimemory-net
+
+volumes:
+  postgres_data:
+  chroma_data:
+
+
+networks:
+  aimemory-net:
+    driver: bridge
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  aimemory_api_key:
+    file: ./secrets/aimemory_api_key.txt

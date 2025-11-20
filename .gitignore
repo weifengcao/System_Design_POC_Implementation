@@ -9,3 +9,5 @@ venv/
 .mypy_cache/
 .idea/
 .vscode/
+aimemory.db
+chroma_db/
