@@ -1,6 +1,5 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
-from typing import Optional
 
 class Settings(BaseSettings):
     APP_NAME: str = "AITrust Layer"
@@ -31,9 +30,11 @@ class Settings(BaseSettings):
     # Security
     AITRUST_API_KEY: str = "change-me-in-prod"
 
-    class Config:
-        env_file = ".env"
-        secrets_dir = "/run/secrets"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        secrets_dir="/run/secrets",
+        extra="ignore",
+    )
 
 @lru_cache()
 def get_settings():
