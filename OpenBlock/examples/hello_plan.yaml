@@ -1,0 +1,8 @@
+project:
+  name: "hello"
+  goal: "Demonstrate OpenBlock pipeline"
+tasks:
+  - name: greet
+    description: "print greeting"
+    commands:
+      - "echo 'Hello from OpenBlock!'"

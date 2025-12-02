@@ -1,0 +1,19 @@
+[project]
+name = "openblock"
+version = "0.1.0"
+description = "CLI-first AI agent pipeline for automating code workflows"
+authors = [{name = "System Design POC"}]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.9.0",
+    "PyYAML>=6.0",
+    "rich>=13.0",
+]
+
+[project.scripts]
+openblock = "openblock.cli:main"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
