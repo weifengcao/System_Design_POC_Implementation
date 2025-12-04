@@ -1,0 +1,117 @@
+SmartOCR – Production-Ready OCR Platform PRD
+
+1. Executive Summary
+SmartOCR is an end-to-end OCR platform that ingests documents (scans, photos, PDFs), detects layout, extracts text and structured fields, and exposes results through APIs and UI workflows. It targets enterprise-grade accuracy, latency, and compliance, supporting mixed document types (invoices, IDs, forms) with human-in-the-loop review, continuous model improvement, and integrations to downstream systems (ERP/CRM/DB). The goal is to ship a minimal but production-ready slice that proves value within four weeks.
+
+2. Goals & Non-Goals
+Goals
+- Deliver >98% character-level accuracy on clean scans; >95% field-level F1 on targeted templates (invoice, receipt, ID).
+- Handle multi-format inputs: image (JPG/PNG), PDF (multi-page), mobile photos with perspective/lighting noise.
+- Provide REST/async batch APIs plus a lightweight review UI for validation and correction.
+- Support layout extraction (tables, key-value pairs, bounding boxes) and structured JSON output with coordinates.
+- Provide evaluation and monitoring loop (dataset curation, drift/quality dashboards).
+- Ship deployable reference stack (Docker/K8s) with GPU-optional path.
+
+Non-Goals
+- Building a generic document editor or RPA suite.
+- Implementing handwriting recognition beyond simple block letters.
+- Full-scale low-code workflow builder; only offer webhook callbacks and basic routing.
+- On-prem hardware procurement (we offer deploy guides, not infra).
+
+3. Personas & Use Cases
+- Operations Analyst: uploads invoice batches, reviews flagged low-confidence fields, exports to ERP.
+- Developer/Integrator: calls API to extract structured fields and ingests JSON into back-office systems.
+- Compliance Officer: ensures PII handling, audit trails, and data retention are in place.
+- Data/ML Engineer: curates datasets, monitors quality, retrains or fine-tunes models.
+
+Primary Use Cases
+- Invoice and receipt processing with line items and totals.
+- ID/passport extraction with MRZ and face region bounding boxes (for KYC flows).
+- Form processing (checkboxes, key-value pairs) with template-specific schemas.
+- Mobile capture: perspective-correct, denoise, and extract from phone photos.
+
+4. Scope & Deliverables (MVP)
+- API: synchronous `/ocr/extract` (single doc, <5MB) and async `/ocr/jobs` for batch; presigned upload flow.
+- Extraction outputs: full text, layout blocks (paragraphs, tables), key-value pairs; optional schema mapping for invoice/ID templates.
+- Confidence scoring per block/field; configurable thresholds to route to review queue.
+- Review UI: list of jobs, document viewer with bounding boxes, inline edit for fields, audit log of edits.
+- Model stack: detection → layout segmentation → text recognition → field mapping; GPU-accelerated path plus CPU fallback.
+- Storage: object store for originals and intermediate artifacts; metadata DB for jobs, results, audit.
+- Monitoring: metrics (latency, success, accuracy proxy via confidence), alerting on SLA breaches; evaluation harness with labeled set.
+- Security: tenant isolation, auth (API key + optional OIDC), encryption at rest/in transit, PII redaction in logs.
+
+Out of Scope (MVP)
+- Human labeling workforce management; we assume internal reviewers only.
+- Auto-templating for arbitrary forms; we ship curated schemas for invoice/ID and a generic KV extractor.
+
+5. Functional Requirements
+- Upload & Inference
+  - Accept PDF/JPG/PNG up to 20MB; mobile-friendly upload with automatic rotation/perspective correction.
+  - Multi-page support; pagination metadata preserved.
+  - Return JSON with text blocks, bounding boxes, reading order, confidence; optionally render annotated PDF/PNG.
+- Structured Fields
+  - Invoice schema: vendor, invoice number/date, due date, tax, totals, currency, line items (desc, qty, unit price, amount).
+  - ID schema: name, DOB, ID number, expiration, nationality, MRZ text, face bounding box.
+  - Allow custom schema definition per tenant with mapping rules (regex, prompt-based extraction).
+- Review Workflow
+  - Auto-flag documents with low confidence or validation failures (totals mismatch, checksum rules).
+  - UI for edit/approve/reject; versioned history and reviewer identity.
+  - Exports via webhook, CSV/JSON download, or push to configured endpoint.
+- Jobs & Retry
+  - Idempotent job creation with client-provided `external_id`.
+  - Retry-once semantics for transient failures; poisoned-job quarantine with alerts.
+- Observability
+  - Metrics: request rate, p95 latency, GPU utilization, success/failure codes, confidence distribution.
+  - Logs with correlation IDs; tracing across pipeline stages.
+- Administration
+  - Tenant-scoped API keys, role-based access (admin/reviewer/viewer).
+  - Data retention policies; PII scrubbing for analytics.
+
+6. Non-Functional Requirements
+- Availability: 99.9% for API tier; batch SLA: 95% of jobs complete within 5 minutes for <50 pages.
+- Latency: p95 <2.0s for single-page sync on GPU; <6s on CPU.
+- Throughput: 100 QPS sync; 10k pages/hour batch on modest GPU cluster.
+- Scalability: horizontal scale of stateless API and workers; autoscale based on queue depth/GPU load.
+- Cost: model routing to CPU for low-priority/batch; cache common templates; compression on storage.
+- Security/Compliance: TLS everywhere, encrypted storage, audit logs, optional regional data residency, SOC2-ready controls.
+
+7. Architecture Overview
+- API Gateway: Auth, rate limit, request validation, presigned upload.
+- Ingestion Service: stores raw documents (S3/GCS or MinIO), enqueues jobs (Kafka/SQS).
+- Orchestrator/Worker: pulls jobs, runs pipeline stages with retries and circuit breakers.
+- ML Pipeline:
+  1) Preprocess (deskew, denoise, resize, perspective fix).
+  2) Layout detection (e.g., Detectron/YOLO layout model) to find blocks/tables/forms.
+  3) Text recognition (TrOCR/Whisper-Vision/Tesseract fallback) per block.
+  4) Field extraction (prompted LLM + rule validators) into schemas with confidence.
+  5) Post-process (currency normalization, date parsing, checksum validation).
+- Review Service & UI: serves annotated images, accepts corrections, persists audit trail.
+- Storage: Object store (raw + annotated), relational DB for metadata (jobs, fields, audits), optional vector store for semantic cleanup.
+- Monitoring: Prometheus/Grafana, OpenTelemetry traces; evaluation service comparing predictions to labeled sets.
+
+8. Data Model (simplified)
+- Job: id, external_id, tenant_id, status, created_at, completed_at, source_uri, doc_type, page_count, error_code.
+- Page: job_id, page_number, width, height, artifacts_uri (annotated), ocr_text, blocks[].
+- Block: id, page_number, bbox, text, type (paragraph/table/kv), confidence.
+- Field: name, value, bbox?, confidence, validator_status, reviewer_edits[].
+- AuditLog: job_id, actor, action (edit/approve/reject), before/after, timestamp, reason.
+
+9. Success Metrics
+- Accuracy: field-level F1 per template; character error rate; validation pass rate.
+- Efficiency: p95 latency, cost per page, GPU utilization.
+- Coverage: % documents auto-approved vs routed to review; % schemas supported.
+- Reliability: job failure rate, retry success rate, SLO adherence.
+- UX: reviewer throughput (pages/hour) and edit-to-approve time.
+
+10. Risks & Mitigations
+- Low-quality scans/mobile blur → aggressive preprocessing, capture guidance, rejection rules with messages.
+- Model drift across tenants → per-tenant evaluation sets, scheduled A/B, feature flags for model versions.
+- PII/security incidents → strict RBAC, redaction pipelines, limited retention, audit trails, encryption keys per tenant.
+- Cost overruns from LLM-based field extraction → heuristic/rule fallback, batching, caching embeddings/prompts.
+- Template diversity → configurable custom schemas with regex rules; fine-tune on tenant data; human review loop.
+
+11. Timeline (4-week MVP)
+- Week 1: Define schemas, set up storage/queue, stub API, preprocessing and baseline OCR integration.
+- Week 2: Layout + text recognition pipeline end-to-end; sync/async endpoints; metadata persistence.
+- Week 3: Field extraction/validation for invoice and ID; review UI skeleton; monitoring basics.
+- Week 4: Harden (auth, rate limit, retries), eval harness with labeled set, deployment manifests, docs.
