@@ -63,6 +63,9 @@ class JobStatus(BaseModel):
     error: Optional[str] = None
     doc_type: Optional[str] = None
 
+    class Config:
+        orm_mode = True
+
 
 class ReviewUpdate(BaseModel):
     fields: List[FieldEntry]

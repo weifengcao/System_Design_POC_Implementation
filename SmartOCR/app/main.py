@@ -1,29 +1,23 @@
 from __future__ import annotations
 
-from typing import Optional
-
-import anyio
 import asyncio
 import logging
-from fastapi import FastAPI, File, HTTPException, UploadFile, Header
+from typing import Optional
+
+from fastapi import FastAPI, File, HTTPException, UploadFile, Header, Depends
 from fastapi import status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from . import models, storage, config, service, ingestion
+from . import models, storage, config, service, pipeline, ingestion
 from .repositories import InMemoryJobRepository
-from .queue_backends import InMemoryQueueBackend
+from .queue_backends import AsyncQueueBackend, RabbitMQBackend, AsyncInMemoryQueueBackend
 
 
+# ---- App Setup ----
 app = FastAPI(title="SmartOCR", version="0.1.0")
 log = logging.getLogger("smartocr")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
-doc_store = storage.InMemoryDocumentStore()
-job_repo = InMemoryJobRepository()
-job_queue = InMemoryQueueBackend()
-object_store = ingestion.ObjectStore()
-job_service = service.JobService(docs=doc_store, jobs=job_repo, queue=job_queue)
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,65 +28,142 @@ app.add_middleware(
 )
 
 
+# ---- DI Setup ----
+def get_settings() -> config.Settings:
+    return config.settings
+
+
+async def get_queue() -> AsyncQueueBackend:
+    if get_settings().USE_RABBITMQ:
+        q = RabbitMQBackend(amqp_url=get_settings().AMQP_URL)
+        await q.connect()
+        yield q
+        await q.disconnect()
+    else:
+        yield AsyncInMemoryQueueBackend()
+
+
+from .repositories import JobRepository, PostgresJobRepository, InMemoryJobRepository
+from .database import get_db, SessionLocal
+
+
+def get_job_repository(db: Session = Depends(get_db)) -> JobRepository:
+    if get_settings().USE_POSTGRES:
+        return PostgresJobRepository(db)
+    else:
+        return InMemoryJobRepository()
+
+
+from .object_store import MinioDocumentStore
+
+
+def get_document_store() -> MinioDocumentStore:
+    return MinioDocumentStore()
+
+
+def get_downloader() -> service.Downloader:
+    return service.Downloader()
+
+def get_job_service(
+    docs: MinioDocumentStore = Depends(get_document_store),
+    jobs: JobRepository = Depends(get_job_repository),
+    queue: AsyncQueueBackend = Depends(get_queue),
+    downloader: service.Downloader = Depends(get_downloader),
+) -> service.JobService:
+    return service.JobService(docs=docs, jobs=jobs, queue=queue, downloader=downloader)
+
+
+def get_api_key(x_api_key: str = Header(None)) -> str:
+    if get_settings().API_KEY and x_api_key != get_settings().API_KEY:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API Key")
+    return x_api_key
+
+
+# ---- Worker Lifecycle ----
+worker_stop_event = asyncio.Event()
+
+
+@app.on_event("startup")
+async def startup():
+    # In a real app, you might not want to run the worker in the same process as the API
+    if get_settings().RUN_WORKER:
+        asyncio.create_task(run_worker())
+
+
+async def run_worker():
+    # This is a bit of a hack to get a JobService instance for the worker
+    # In a real app, the worker would be a separate process with its own DI setup
+    if get_settings().USE_RABBITMQ:
+        q = RabbitMQBackend(amqp_url=get_settings().AMQP_URL)
+        await q.connect()
+    else:
+        q = AsyncInMemoryQueueBackend()
+
+    if get_settings().USE_POSTGRES:
+        db = SessionLocal()
+        job_repo = PostgresJobRepository(db)
+    else:
+        job_repo = InMemoryJobRepository()
+
+    job_service = service.JobService(
+        docs=get_document_store(),
+        jobs=job_repo,
+        queue=q,
+        downloader=get_downloader(),
+    )
+    await job_service.worker(worker_stop_event)
+
+    if get_settings().USE_RABBITMQ:
+        await q.disconnect()
+    if get_settings().USE_POSTGRES:
+        db.close()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    worker_stop_event.set()
+
+
+# ---- API Endpoints ----
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
-
-
-def _check_api_key(x_api_key: Optional[str]) -> None:
-    expected = config.settings.api_key
-    if expected and x_api_key != expected:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
 
 @app.post("/ocr/extract", response_model=models.OCRResult)
 async def extract_ocr(
     file: Optional[UploadFile] = File(default=None),
     payload: Optional[models.SyncExtractRequest] = None,
-    x_api_key: Optional[str] = Header(default=None),
     doc_type: str = "generic",
+    api_key: str = Depends(get_api_key),
+    downloader: service.Downloader = Depends(get_downloader),
+    doc_store: MinioDocumentStore = Depends(get_document_store),
 ) -> models.OCRResult:
-    """
-    Sync OCR endpoint. Accepts an uploaded file or a source URL, runs stub pipeline, and returns results.
-    """
-    _check_api_key(x_api_key)
     if not file and not payload:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Provide either a file upload or JSON body with source_url",
-        )
+        raise HTTPException(status_code=400, detail="Either a file upload or a source_url is required.")
 
-    source_uri: str
-    content: Optional[bytes] = None
+    source_uri = "upload"
     if file:
         content = await file.read()
-        source_uri = file.filename or "uploaded"
-        # persist upload to object store for consistency
-        try:
-            ingestion.validate_upload(content, file.content_type)
-        except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-        stored_uri = object_store.put(source_uri, content, content_type=file.content_type or "application/octet-stream")
-        source_uri = stored_uri
-    else:
-        assert payload is not None
+        source_uri = file.filename or "upload"
+    elif payload:
+        content = await downloader.fetch_bytes(payload.source_url)
         source_uri = payload.source_url
-        content = await job_service.fetch_bytes(source_uri)
 
-    if not content:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty document")
-
-    result = await job_service.process_sync(file_bytes=content, source_uri=source_uri, doc_type=doc_type)
+    doc_id = "sync_doc"
+    doc_store.save(doc_id, content)
+    result = pipeline.run_ocr(content, doc_type=doc_type)
+    result.job_id = doc_id
+    result.source_uri = source_uri
     return result
 
 
 @app.post("/ocr/jobs", response_model=models.JobCreated)
 async def create_job(
     body: models.AsyncJobRequest,
-    x_api_key: Optional[str] = Header(default=None),
+    job_service: service.JobService = Depends(get_job_service),
+    api_key: str = Depends(get_api_key),
 ) -> models.JobCreated:
-    _check_api_key(x_api_key)
-    # For async jobs with upload URLs, we assume caller provided a reachable URI; validation is deferred to worker fetch.
     return await job_service.create_job(
         source_uri=body.source_url,
         external_id=body.external_id,
@@ -103,63 +174,42 @@ async def create_job(
 
 
 @app.get("/ocr/jobs/{job_id}", response_model=models.JobStatus)
-async def get_job(job_id: str, x_api_key: Optional[str] = Header(default=None)) -> models.JobStatus:
-    _check_api_key(x_api_key)
+async def get_job(
+    job_id: str,
+    job_service: service.JobService = Depends(get_job_service),
+    api_key: str = Depends(get_api_key),
+) -> models.JobStatus:
     job = await job_service.get_job(job_id)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
-    return models.JobStatus(
-        job_id=job.id,
-        status=job.status,
-        result=job.result,
-        error=job.error,
-        doc_type=job.doc_type,
-    )
+    return models.JobStatus.from_orm(job)
 
 
 @app.get("/ocr/jobs", response_model=list[models.JobStatus])
-async def list_jobs(limit: int = 50, x_api_key: Optional[str] = Header(default=None)) -> list[models.JobStatus]:
-    _check_api_key(x_api_key)
+async def list_jobs(
+    limit: int = 50,
+    job_service: service.JobService = Depends(get_job_service),
+    api_key: str = Depends(get_api_key),
+) -> list[models.JobStatus]:
     jobs = await job_service.list_jobs(limit=limit)
-    return [
-        models.JobStatus(
-            job_id=j.id,
-            status=j.status,
-            result=j.result,
-            error=j.error,
-            doc_type=j.doc_type,
-        )
-        for j in jobs
-    ]
+    return [models.JobStatus.from_orm(j) for j in jobs]
 
 
 @app.patch("/ocr/jobs/{job_id}/fields", response_model=models.JobStatus)
 async def review_job(
     job_id: str,
     body: models.ReviewUpdate,
-    x_api_key: Optional[str] = Header(default=None),
+    job_service: service.JobService = Depends(get_job_service),
+    api_key: str = Depends(get_api_key),
 ) -> models.JobStatus:
-    _check_api_key(x_api_key)
     return await job_service.update_review(job_id=job_id, fields=body.fields)
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request, exc):  # type: ignore[override]
-    # Basic fail-safe; in production use structured logging.
-    log.error("Unhandled error: %s", exc)
+async def unhandled_exception_handler(request, exc):
+    log.error("Unhandled error: %s", exc, exc_info=True)
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error"},
     )
-
-
-@app.on_event("startup")
-async def start_worker() -> None:
-    async def worker_loop() -> None:
-        while True:
-            await job_service.process_next_job()
-            await anyio.sleep(0.05)
-
-    # fire-and-forget background worker without blocking startup
-    asyncio.create_task(worker_loop())

@@ -65,106 +65,66 @@ def _parse_line_items(text: str) -> List[dict]:
     return items
 
 
-def extract_fields(full_text: str, doc_type: str, default_conf: float, page_count: int) -> List[models.FieldEntry]:
+def _extract_fields_from_text(full_text: str, default_conf: float, page_count: int, doc_type: str) -> List[models.FieldEntry]:
     """
-    Schema-driven extraction with simple heuristics per doc_type.
+    Heuristic field extraction for invoices; fall back to generic fields for other types.
     """
-    schema = schemas.get_schema(doc_type)
-    text = full_text or ""
     fields: List[models.FieldEntry] = []
-
-    if schema.doc_type == "invoice":
-        invoice_number = re.search(r"(INV[-\s]?\d+)", text, re.IGNORECASE)
-        total_match = re.search(r"total[^0-9]*([\d,.]+)", text, re.IGNORECASE)
-        tax_match = re.search(r"tax[^0-9]*([\d,.]+)", text, re.IGNORECASE)
-        currency_match = re.search(r"\b([A-Z]{3})\b", text)
-        vendor_match = re.search(r"vendor[:\s]+([A-Za-z0-9 &.-]+)", text, re.IGNORECASE)
-        inv_date_match = re.search(
-            r"(invoice date|date)[:\s]+([0-9]{2}/[0-9]{2}/[0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2})",
-            text,
-            re.IGNORECASE,
-        )
-        due_date_match = re.search(
-            r"(due date)[:\s]+([0-9]{2}/[0-9]{2}/[0-9]{4}|[0-9]{4}-[0-9]{2}-[0-9]{2})",
-            text,
-            re.IGNORECASE,
-        )
-        parsed_line_items = _parse_line_items(text)
-
-        for field in schema.fields:
-            name = field.name
-            value = "N/A"
-            confidence = default_conf * 0.5
-            status = "failed"
-
-            if name == "invoice_number":
-                value = invoice_number.group(1) if invoice_number else "N/A"
-                found = invoice_number is not None
-                status = _status(found, found)
-                confidence = default_conf if found else confidence
-            elif name == "total":
-                value = total_match.group(1) if total_match else "0.00"
-                valid = _parse_decimal(value)
-                status = _status(total_match is not None, valid)
-                confidence = default_conf if valid else confidence
-            elif name == "tax":
-                value = tax_match.group(1) if tax_match else "0.00"
-                valid = _parse_decimal(value)
-                status = _status(tax_match is not None, valid)
-                confidence = default_conf if valid else confidence
-            elif name == "currency":
-                value = currency_match.group(1) if currency_match else "USD"
-                status = _status(currency_match is not None, True)
-                confidence = default_conf if currency_match else confidence
-            elif name == "vendor":
-                value = vendor_match.group(1).strip() if vendor_match else "Unknown Vendor"
-                status = _status(vendor_match is not None, True)
-                confidence = default_conf if vendor_match else confidence
-            elif name == "invoice_date":
-                raw = inv_date_match.group(2) if inv_date_match else ""
-                value = raw or "1970-01-01"
-                valid = _parse_date(raw)
-                status = _status(inv_date_match is not None, valid)
-                confidence = default_conf if valid else confidence
-            elif name == "due_date":
-                raw = due_date_match.group(2) if due_date_match else ""
-                value = raw or "1970-01-01"
-                valid = _parse_date(raw)
-                status = _status(due_date_match is not None, valid)
-                confidence = default_conf if valid else confidence
-            elif name == "line_items":
-                value = json.dumps(parsed_line_items)
-                status = "passed" if parsed_line_items else "failed"
-                confidence = default_conf if parsed_line_items else default_conf * 0.3
-            else:
-                value = "N/A"
-                status = "skipped"
-
-            fields.append(
-                models.FieldEntry(
-                    name=name,
-                    value=value,
-                    bbox=None,
-                    confidence=confidence,
-                    validator_status=status,
-                )
+    if doc_type.lower() != "invoice":
+        fields.append(
+            models.FieldEntry(
+                name="full_text",
+                value=full_text,
+                bbox=None,
+                confidence=default_conf,
+                validator_status="skipped",
             )
-
-    else:
-        # Generic fallback
-        for field in schema.fields:
-            val = full_text if field.name == "full_text" else "N/A"
-            fields.append(
-                models.FieldEntry(
-                    name=field.name,
-                    value=val,
-                    bbox=None,
-                    confidence=default_conf,
-                    validator_status="skipped",
-                )
+        )
+        fields.append(
+            models.FieldEntry(
+                name="page_count",
+                value=str(page_count),
+                bbox=None,
+                confidence=1.0,
+                validator_status="passed",
             )
+        )
+        return fields
 
-    # Append page_count for all types
+    invoice_match = re.search(r"(INV[-\s]?\d+)", full_text, re.IGNORECASE)
+    total_match = re.search(r"total[^0-9]*([\d,.]+)", full_text, re.IGNORECASE)
+
+    fields.append(
+        models.FieldEntry(
+            name="invoice_number",
+            value=invoice_match.group(1) if invoice_match else "N/A",
+            bbox=None,
+            confidence=default_conf if invoice_match else default_conf * 0.5,
+            validator_status="skipped",
+        )
+    )
+    total_value = "0.00"
+    total_conf = default_conf * 0.5
+    total_status = "skipped"
+    if total_match:
+        total_value = total_match.group(1)
+        total_conf = default_conf
+        try:
+            # strip commas and normalize
+            _ = Decimal(total_value.replace(",", ""))
+            total_status = "passed"
+        except (InvalidOperation, AttributeError):
+            total_status = "failed"
+
+    fields.append(
+        models.FieldEntry(
+            name="total",
+            value=total_value,
+            bbox=None,
+            confidence=total_conf,
+            validator_status=total_status,  # basic numeric validation
+        )
+    )
     fields.append(
         models.FieldEntry(
             name="page_count",
@@ -174,4 +134,20 @@ def extract_fields(full_text: str, doc_type: str, default_conf: float, page_coun
             validator_status="passed",
         )
     )
+    fields.append(
+        models.FieldEntry(
+            name="full_text",
+            value=full_text,
+            bbox=None,
+            confidence=default_conf,
+            validator_status="skipped",
+        )
+    )
     return fields
+
+
+def extract_fields(full_text: str, doc_type: str, default_conf: float, page_count: int) -> List[models.FieldEntry]:
+    """
+    Schema-driven extraction with simple heuristics per doc_type.
+    """
+    return _extract_fields_from_text(full_text, default_conf, page_count, doc_type)
