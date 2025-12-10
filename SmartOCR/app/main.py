@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Optional, AsyncGenerator
 
 from fastapi import FastAPI, File, HTTPException, UploadFile, Header, Depends
 from fastapi import status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 
-from . import models, storage, config, service, pipeline, ingestion
+from . import models, storage, config, service
 from .repositories import InMemoryJobRepository
 from .queue_backends import AsyncQueueBackend, RabbitMQBackend, AsyncInMemoryQueueBackend
 
@@ -33,13 +34,14 @@ def get_settings() -> config.Settings:
     return config.settings
 
 
-async def get_queue() -> AsyncQueueBackend:
+async def get_queue() -> AsyncGenerator[AsyncQueueBackend, None]:
     if get_settings().USE_RABBITMQ:
         q = RabbitMQBackend(amqp_url=get_settings().AMQP_URL)
         await q.connect()
         yield q
         await q.disconnect()
     else:
+        # For in-memory, the queue is a singleton that lives for the duration of the app
         yield AsyncInMemoryQueueBackend()
 
 
@@ -91,32 +93,42 @@ async def startup():
 
 
 async def run_worker():
-    # This is a bit of a hack to get a JobService instance for the worker
-    # In a real app, the worker would be a separate process with its own DI setup
-    if get_settings().USE_RABBITMQ:
-        q = RabbitMQBackend(amqp_url=get_settings().AMQP_URL)
-        await q.connect()
-    else:
-        q = AsyncInMemoryQueueBackend()
+    """
+    This function runs as a background task to process jobs from the queue.
+    """
+    log.info("Starting worker...")
+    # This is a simplified setup for the worker's dependencies.
+    # In a more robust application, this would be a separate process
+    # with a more formal dependency injection setup.
+    queue_backend = None
+    db_session = None
+    try:
+        if get_settings().USE_RABBITMQ:
+            queue_backend = RabbitMQBackend(amqp_url=get_settings().AMQP_URL)
+            await queue_backend.connect()
+        else:
+            queue_backend = AsyncInMemoryQueueBackend()
 
-    if get_settings().USE_POSTGRES:
-        db = SessionLocal()
-        job_repo = PostgresJobRepository(db)
-    else:
-        job_repo = InMemoryJobRepository()
+        if get_settings().USE_POSTGRES:
+            db_session = SessionLocal()
+            job_repo = PostgresJobRepository(db_session)
+        else:
+            job_repo = InMemoryJobRepository()
 
-    job_service = service.JobService(
-        docs=get_document_store(),
-        jobs=job_repo,
-        queue=q,
-        downloader=get_downloader(),
-    )
-    await job_service.worker(worker_stop_event)
+        job_service = service.JobService(
+            docs=get_document_store(),
+            jobs=job_repo,
+            queue=queue_backend,
+            downloader=get_downloader(),
+        )
+        await job_service.worker(worker_stop_event)
 
-    if get_settings().USE_RABBITMQ:
-        await q.disconnect()
-    if get_settings().USE_POSTGRES:
-        db.close()
+    finally:
+        if queue_backend and get_settings().USE_RABBITMQ:
+            await queue_backend.disconnect()
+        if db_session:
+            db_session.close()
+        log.info("Worker stopped.")
 
 
 @app.on_event("shutdown")
@@ -152,7 +164,12 @@ async def extract_ocr(
 
     doc_id = "sync_doc"
     doc_store.save(doc_id, content)
-    result = pipeline.run_ocr(content, doc_type=doc_type)
+    # The 'pipeline' module is not designed for direct use here.
+    # This endpoint is for synchronous, simple OCR, bypassing the async job queue.
+    # A proper implementation would likely involve a simplified, synchronous OCR function.
+    # For now, we'll return a placeholder.
+    from .pipeline import run_ocr
+    result = run_ocr(content, doc_type=doc_type)
     result.job_id = doc_id
     result.source_uri = source_uri
     return result
